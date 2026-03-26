@@ -1,13 +1,10 @@
 /**
- * Typed API client for the Node.js backend.
+ * Typed API client with automatic error normalization.
  * All calls go through this module — no fetch/axios calls in components.
  */
 
-import axios, { AxiosError } from "axios";
-import type {
-  Project, QueryResult, ChatMessage,
-  IngestionJob, ApiResponse,
-} from "@/types";
+import axios, { type AxiosError } from "axios";
+import type { Project, QueryResult, ChatMessage, IngestionJob, ApiResponse } from "@/types";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api",
@@ -15,13 +12,13 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// Normalize errors into a consistent shape
+// Normalize errors to consistent shape with proper types
 api.interceptors.response.use(
-  (r) => r,
+  (res) => res,
   (err: AxiosError<ApiResponse<null>>) => {
-    const message = err.response?.data?.message || err.message || "Network error";
-    const status  = err.response?.status || 0;
-    const apiErr  = new Error(message) as Error & { status: number };
+    const message = err.response?.data?.message ?? err.message ?? "Network error";
+    const status = err.response?.status ?? 0;
+    const apiErr = new Error(message) as Error & { status: number };
     apiErr.status = status;
     return Promise.reject(apiErr);
   }
@@ -29,32 +26,32 @@ api.interceptors.response.use(
 
 // ── Projects ──────────────────────────────────────────────────────────────────
 
-export async function createProject(name: string, repoUrl?: string): Promise<Project> {
+export const createProject = async (name: string, repoUrl?: string): Promise<Project> => {
   const { data } = await api.post<ApiResponse<Project>>("/projects", { name, repoUrl });
   return data.data;
-}
+};
 
-export async function listProjects(): Promise<Project[]> {
+export const listProjects = async (): Promise<Project[]> => {
   const { data } = await api.get<ApiResponse<Project[]>>("/projects");
   return data.data;
-}
+};
 
-export async function getProject(projectId: string): Promise<Project> {
+export const getProject = async (projectId: string): Promise<Project> => {
   const { data } = await api.get<ApiResponse<Project>>(`/projects/${projectId}`);
   return data.data;
-}
+};
 
-export async function deleteProject(projectId: string): Promise<void> {
+export const deleteProject = async (projectId: string): Promise<void> => {
   await api.delete(`/projects/${projectId}`);
-}
+};
 
 // ── Ingestion ─────────────────────────────────────────────────────────────────
 
-export async function ingestZip(
+export const ingestZip = async (
   projectId: string,
   file: File,
   onProgress?: (pct: number) => void
-): Promise<{ jobId: string }> {
+): Promise<{ jobId: string }> => {
   const form = new FormData();
   form.append("projectId", projectId);
   form.append("file", file);
@@ -68,42 +65,42 @@ export async function ingestZip(
     },
   });
   return data.data;
-}
+};
 
-export async function getJobStatus(jobId: string): Promise<IngestionJob> {
+export const getJobStatus = async (jobId: string): Promise<IngestionJob> => {
   const { data } = await api.get<ApiResponse<IngestionJob>>(`/ingest/${jobId}/status`);
   return data.data;
-}
+};
 
 // ── Query ─────────────────────────────────────────────────────────────────────
 
-export async function queryProject(
+export const queryProject = async (
   projectId: string,
   question: string,
   topK?: number
-): Promise<QueryResult> {
+): Promise<QueryResult> => {
   const { data } = await api.post<ApiResponse<QueryResult>>("/query", {
     projectId,
     question,
-    topK: topK || null,
+    topK: topK ?? null,
   });
   return data.data;
-}
+};
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
 
-export async function getChatHistory(projectId: string): Promise<ChatMessage[]> {
+export const getChatHistory = async (projectId: string): Promise<ChatMessage[]> => {
   const { data } = await api.get<ApiResponse<{ messages: ChatMessage[] }>>(`/chat/${projectId}`);
   return data.data.messages;
-}
+};
 
-export async function clearChatHistory(projectId: string): Promise<void> {
+export const clearChatHistory = async (projectId: string): Promise<void> => {
   await api.delete(`/chat/${projectId}`);
-}
+};
 
 // ── Files ─────────────────────────────────────────────────────────────────────
 
-export async function getFileTree(projectId: string) {
+export const getFileTree = async (projectId: string) => {
   const { data } = await api.get(`/files/${projectId}`);
   return data.data;
-}
+};
