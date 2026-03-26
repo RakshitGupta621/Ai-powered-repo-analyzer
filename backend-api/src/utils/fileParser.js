@@ -10,22 +10,17 @@ const AdmZip = require("adm-zip");
 const { glob } = require("glob");
 const logger = require("./logger");
 
-// Extensions to include
 const ALLOWED_EXTENSIONS = new Set([
   ".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs",
   ".py", ".java", ".go", ".rs", ".cpp", ".c", ".cs",
   ".rb", ".php", ".swift", ".kt", ".scala",
-  ".html", ".css", ".scss", ".less",
   ".json", ".yaml", ".yml", ".toml", ".env.example",
-  ".md", ".mdx", ".txt", ".sql", ".sh", ".bash",
-  ".graphql", ".proto",
+  ".md", ".mdx", ".txt", ".sql", ".sh", ".bash", ".graphql",
 ]);
 
-// Paths to skip
 const IGNORED_DIRS = new Set([
   "node_modules", ".git", "__pycache__", ".venv", "venv",
-  "dist", "build", ".next", "out", "coverage",
-  ".pytest_cache", ".mypy_cache", "vendor",
+  "dist", "build", ".next", "out", "coverage", ".pytest_cache",
 ]);
 
 const MAX_FILE_SIZE_BYTES = 200 * 1024; // 200 KB per file
@@ -100,13 +95,8 @@ async function readDirectory(dirPath) {
   return files;
 }
 
-/**
- * Build a simple file tree structure for the API response.
- * @param {Array<{filePath: string}>} files
- * @returns {Object} Nested tree: { name, type, children? }
- */
 function buildFileTree(files) {
-  const root = { name: "root", type: "dir", children: {} };
+  const root = { children: {} };
 
   for (const { filePath } of files) {
     const parts = filePath.split("/");
@@ -126,44 +116,24 @@ function buildFileTree(files) {
     }
   }
 
-  return serializeTree(root.children);
+  return Object.values(root.children).map(serialize);
 }
 
-function serializeTree(nodeMap) {
-  return Object.values(nodeMap).map((node) => {
-    if (node.type === "file") return node;
-    return {
-      ...node,
-      children: serializeTree(node.children),
-    };
-  });
+function serialize(node) {
+  if (node.type === "file") return node;
+  return { ...node, children: node.children ? Object.values(node.children).map(serialize) : [] };
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function shouldSkip(filePath) {
   const parts = filePath.split("/");
   const filename = parts[parts.length - 1];
   const ext = path.extname(filename).toLowerCase();
 
-  // Skip ignored directories
-  for (const part of parts.slice(0, -1)) {
-    if (IGNORED_DIRS.has(part)) return true;
-  }
-
-  // Skip non-whitelisted extensions
-  if (ext && !ALLOWED_EXTENSIONS.has(ext)) return true;
-
-  // Skip lock files by extension or well-known name
-  if (filename.endsWith(".lock")) return true;
-  if (filename === "package-lock.json") return true;
-  if (filename === "yarn.lock") return true;
-  if (filename === "pnpm-lock.yaml") return true;
-
-  // Skip minified files
-  if (filename.includes(".min.")) return true;
-
-  return false;
+  return (
+    parts.slice(0, -1).some((p) => IGNORED_DIRS.has(p)) ||
+    (ext && !ALLOWED_EXTENSIONS.has(ext)) ||
+    /^(package-lock\.json|yarn\.lock|pnpm-lock\.yaml)$|\.lock$|\.min\./.test(filename)
+  );
 }
 
 function normalizePath(p) {

@@ -1,47 +1,39 @@
-/**
- * Projects controller.
- * Thin layer — delegates everything to projectService.
- */
-
 const projectService = require("../services/projectService");
-const { success, error, notFound } = require("../utils/response");
+const { success, notFound } = require("../utils/response");
 
-async function createProject(req, res, next) {
+const createProject = async (req, res, next) => {
   try {
     const project = await projectService.createProject(req.body);
     return success(res, project, "Project created", 201);
   } catch (err) {
     next(err);
   }
-}
+};
 
-async function getProject(req, res, next) {
+const getProject = async (req, res, next) => {
   try {
     const project = projectService.getProject(req.params.projectId);
-    if (!project) return notFound(res, "Project");
-    return success(res, project);
+    return project ? success(res, project) : notFound(res, "Project");
   } catch (err) {
     next(err);
   }
-}
+};
 
-async function listProjects(req, res, next) {
+const listProjects = async (req, res, next) => {
   try {
-    const projects = projectService.listProjects();
-    return success(res, projects);
+    return success(res, projectService.listProjects());
   } catch (err) {
     next(err);
   }
-}
+};
 
-async function deleteProject(req, res, next) {
+const deleteProject = async (req, res, next) => {
   try {
     const deleted = await projectService.deleteProject(req.params.projectId);
-    if (!deleted) return notFound(res, "Project");
-    return success(res, null, "Project deleted");
+    return deleted ? success(res, null, "Project deleted") : notFound(res, "Project");
   } catch (err) {
     next(err);
   }
-}
+};
 
 module.exports = { createProject, getProject, listProjects, deleteProject };

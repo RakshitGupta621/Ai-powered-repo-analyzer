@@ -1,19 +1,12 @@
-/**
- * Central configuration.
- * All env vars are validated on startup — missing required vars crash fast.
- */
-
 require("dotenv").config();
 
-function required(key) {
+const required = (key) => {
   const val = process.env[key];
-  if (!val) throw new Error(`Missing required env var: ${key}`);
+  if (!val) throw new Error(`Missing env var: ${key}`);
   return val;
-}
+};
 
-function optional(key, defaultVal) {
-  return process.env[key] ?? defaultVal;
-}
+const optional = (key, def) => process.env[key] ?? def;
 
 const config = {
   // ── App ────────────────────────────────────────────────────────────────────
@@ -44,3 +37,5 @@ const config = {
 };
 
 module.exports = config;
+
+

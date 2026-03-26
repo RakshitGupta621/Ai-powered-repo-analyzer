@@ -1,35 +1,25 @@
-/**
- * Centralized logger using Winston.
- * - Development: colorized console output
- * - Production: structured JSON logs
- */
-
 const { createLogger, format, transports } = require("winston");
 const config = require("../config");
 
-const { combine, timestamp, printf, colorize, json, errors } = format;
-
-// Human-readable format for dev
-const devFormat = combine(
-  colorize(),
-  timestamp({ format: "HH:mm:ss" }),
-  errors({ stack: true }),
-  printf(({ level, message, timestamp, stack, ...meta }) => {
-    const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
-    return `${timestamp} [${level}] ${stack || message}${metaStr}`;
-  })
-);
-
-// Structured JSON for production
-const prodFormat = combine(
-  timestamp(),
-  errors({ stack: true }),
-  json()
-);
+const isDev = config.env !== "production";
 
 const logger = createLogger({
-  level: config.env === "production" ? "info" : "debug",
-  format: config.env === "production" ? prodFormat : devFormat,
+  level: isDev ? "debug" : "info",
+  format: isDev
+    ? format.combine(
+        format.colorize(),
+        format.timestamp({ format: "HH:mm:ss" }),
+        format.errors({ stack: true }),
+        format.printf(({ level, message, timestamp, stack, ...meta }) => {
+          const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
+          return `${timestamp} [${level}] ${stack || message}${metaStr}`;
+        })
+      )
+    : format.combine(
+        format.timestamp(),
+        format.errors({ stack: true }),
+        format.json()
+      ),
   transports: [new transports.Console()],
 });
 
